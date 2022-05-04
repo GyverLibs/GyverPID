@@ -1,3 +1,5 @@
+This is an automatic translation, may be incorrect in some places. See sources and examples!
+
 # GyverPID
 GyverPID - PID controller library for Arduino
 - The time of one calculation is about 70 µs
