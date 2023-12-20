@@ -40,7 +40,7 @@
 #define ON_ERROR 0
 #define ON_RATE 1
 
-template <class dataType = int, class timeType = int16_t>
+template <class dataType = float, class timeType = int16_t>
 class GyverPID {
 public:
     // ==== dataType это float или int, в зависимости от выбранного (см. пример integer_calc) ====
