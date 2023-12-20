@@ -35,24 +35,19 @@
 #define GyverPID_h
 #include <Arduino.h>
 
-#if defined(PID_INTEGER)	// расчёты с целыми числами
-typedef int datatype;
-#else						// расчёты с float числами
-typedef float datatype;
-#endif
-
 #define NORMAL 0
 #define REVERSE 1
 #define ON_ERROR 0
 #define ON_RATE 1
 
+template <class dataType = int, class timeType = int16_t>
 class GyverPID {
 public:
-    // ==== datatype это float или int, в зависимости от выбранного (см. пример integer_calc) ====
+    // ==== dataType это float или int, в зависимости от выбранного (см. пример integer_calc) ====
     GyverPID(){}
     
     // kp, ki, kd, dt
-    GyverPID(float new_kp, float new_ki, float new_kd, int16_t new_dt = 100) {
+    GyverPID(float new_kp, float new_ki, float new_kd, timeType new_dt = 100) {
         setDt(new_dt);
         Kp = new_kp;
         Ki = new_ki;
@@ -76,23 +71,23 @@ public:
     }
     
     // установка времени дискретизации (для getResultTimer)
-    void setDt(int16_t new_dt) {						
+    void setDt(timeType new_dt) {						
         _dt_s = new_dt / 1000.0f;
         _dt = new_dt;
     }
     
-    datatype setpoint = 0;		// заданная величина, которую должен поддерживать регулятор
-    datatype input = 0;			// сигнал с датчика (например температура, которую мы регулируем)
-    datatype output = 0;		// выход с регулятора на управляющее устройство (например величина ШИМ или угол поворота серво)
+    dataType setpoint = 0;		// заданная величина, которую должен поддерживать регулятор
+    dataType input = 0;			// сигнал с датчика (например температура, которую мы регулируем)
+    dataType output = 0;		// выход с регулятора на управляющее устройство (например величина ШИМ или угол поворота серво)
     float Kp = 0.0;				// коэффициент P
     float Ki = 0.0;				// коэффициент I
     float Kd = 0.0;				// коэффициент D	
     float integral = 0.0;		// интегральная сумма
     
     // возвращает новое значение при вызове (если используем свой таймер с периодом dt!)
-    datatype getResult() {
-        datatype error = setpoint - input;			// ошибка регулирования
-        datatype delta_input = prevInput - input;	// изменение входного сигнала за dt
+    dataType getResult() {
+        dataType error = setpoint - input;			// ошибка регулирования
+        dataType delta_input = prevInput - input;	// изменение входного сигнала за dt
         prevInput = input;							// запомнили предыдущее
         if (_direction) {							// смена направления
             error = -error;
@@ -125,7 +120,7 @@ public:
     }
     
     // возвращает новое значение не ранее, чем через dt миллисекунд (встроенный таймер с периодом dt)
-    datatype getResultTimer() {
+    dataType getResultTimer() {
         if (millis() - pidTimer >= _dt) {
             pidTimer = millis();
             getResult();
@@ -134,21 +129,21 @@ public:
     }
     
     // посчитает выход по реальному прошедшему времени между вызовами функции
-    datatype getResultNow() {
+    dataType getResultNow() {
         setDt(millis() - pidTimer);
         pidTimer = millis();
         return getResult();
     }
     
 private:
-    int16_t _dt = 100;		// время итерации в мс
+    timeType _dt = 100;		// время итерации в мс
     float _dt_s = 0.1;		// время итерации в с
     boolean _mode = 0, _direction = 0;
     int _minOut = 0, _maxOut = 255;	
-    datatype prevInput = 0;	
+    dataType prevInput = 0;	
     uint32_t pidTimer = 0;
 #if (PID_INTEGRAL_WINDOW > 0)
-    datatype errors[PID_INTEGRAL_WINDOW];
+    dataType errors[PID_INTEGRAL_WINDOW];
     int t = 0;	
 #endif
 };
