@@ -36,7 +36,7 @@
 #include <Arduino.h>
 
 #if defined(PID_INTEGER)  // расчёты с целыми числами
-typedef int pidtype;
+typedef int16_t pidtype;
 #else  // расчёты с float числами
 typedef float pidtype;
 #endif
@@ -52,7 +52,7 @@ class GyverPID {
     GyverPID() {}
 
     // kp, ki, kd, dt
-    GyverPID(float new_kp, float new_ki, float new_kd, uint16_t new_dt = 100) {
+    GyverPID(float new_kp, float new_ki, float new_kd, uint32_t new_dt = 100) {
         setDt(new_dt);
         Kp = new_kp;
         Ki = new_ki;
@@ -70,13 +70,13 @@ class GyverPID {
     }
 
     // лимит выходной величины (например для ШИМ ставим 0-255)
-    void setLimits(int min_output, int max_output) {
+    void setLimits(int16_t min_output, int16_t max_output) {
         _minOut = min_output;
         _maxOut = max_output;
     }
 
     // установка времени дискретизации (для getResultTimer)
-    void setDt(uint16_t new_dt) {
+    void setDt(uint32_t new_dt) {
         _dt_s = new_dt / 1000.0f;
         _dt = new_dt;
     }
@@ -141,15 +141,15 @@ class GyverPID {
     }
 
    private:
-    uint16_t _dt = 100;  // время итерации в мс
+    uint32_t _dt = 100;  // время итерации в мс
     float _dt_s = 0.1;   // время итерации в с
     bool _mode = 0, _direction = 0;
-    int _minOut = 0, _maxOut = 255;
+    int16_t _minOut = 0, _maxOut = 255;
     pidtype prevInput = 0;
     uint32_t pidTimer = 0;
 #if (PID_INTEGRAL_WINDOW > 0)
     pidtype errors[PID_INTEGRAL_WINDOW];
-    int t = 0;
+    uint16_t t = 0;
 #endif
 };
 #endif
