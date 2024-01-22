@@ -29,10 +29,10 @@
     2. Структура цикла
     Библиотека сделана универсальной для любого датчика и управляющего устройства, цикл тюнинга организуется вот так:
     // цикл
-    tuner.setInput(значение с датчика);        // передаём текущее значение с датчика. ЖЕЛАТЕЛЬНО ФИЛЬТРОВАННОЕ
-    tuner.compute();                        // тут производятся вычисления по своему таймеру
+    tuner.setInput(значение с датчика);		// передаём текущее значение с датчика. ЖЕЛАТЕЛЬНО ФИЛЬТРОВАННОЕ
+    tuner.compute();						// тут производятся вычисления по своему таймеру
     // tuner.getOutput(); // тут можно забрать новый управляющий сигнал
-    analogWrite(pin, tuner.getOutput());    // например для ШИМ
+    analogWrite(pin, tuner.getOutput());	// например для ШИМ
 
     3. Отладка и получение значений
     3.1 Во время работы тюнера можно вызвать tuner.getState() - вернёт номер текущего этапа работы. На 7-ом этапе можно забирать коэффициенты
@@ -56,8 +56,8 @@
 #define REVERSE 1
 
 class PIDtuner2 {
-   public:
-    void setParameters(bool newDirection, int newStart, int newEnd, int newWait, float newWindow, int newPeriod) {
+public:
+    void setParameters(bool newDirection, int newStart, int newEnd, unsigned long newWait, float newWindow, unsigned long newPeriod) {
         direction = newDirection;
         start = newStart;
         end = newEnd;
@@ -74,98 +74,103 @@ class PIDtuner2 {
         if (millis() - tmr >= period) {
             tmr = millis();
             switch (state) {
-                case 0:  // старт
-                    output = (start);
+            case 0:		// старт
+                output = (start);
+                startTime = millis();
+                state = 1;
+                debFlag = true;
+                break;
+            case 1:		// ловим плато
+                if (millis() - startTime > wait) {
                     startTime = millis();
-                    state = 1;
+                    if (abs(thisValue - lastValue) < window) {
+                        state = 2;
+                        startValue = thisValue;
+                        output = (end);
+                    }
+                    lastValue = thisValue;
                     debFlag = true;
-                    break;
-                case 1:  // ловим плато
-                    if (millis() - startTime > wait) {
-                        startTime = millis();
-                        if (abs(thisValue - lastValue) < window) {
-                            state = 2;
-                            startValue = thisValue;
-                            output = (end);
-                        }
-                        lastValue = thisValue;
-                        debFlag = true;
+                }
+                break;
+            case 2:		// ловим второе плато
+                if (millis() - startTime > wait) {
+                    startTime = millis();
+                    if (abs(thisValue - lastValue) < window) {
+                        state = 3;
+                        endValue = thisValue;
+                        B = abs(endValue - startValue);
+                        output = (start);
                     }
-                    break;
-                case 2:  // ловим второе плато
-                    if (millis() - startTime > wait) {
-                        startTime = millis();
-                        if (abs(thisValue - lastValue) < window) {
-                            state = 3;
-                            endValue = thisValue;
-                            B = abs(endValue - startValue);
-                            output = (start);
-                        }
-                        lastValue = thisValue;
-                        debFlag = true;
-                    }
-                    break;
-                case 3:  // ждём остывания до 1
-                    if (millis() - startTime > wait) {
-                        startTime = millis();
-                        if (abs(thisValue - lastValue) < window) {
-                            state = 4;
-                            output = (end);
-                        }
-                        lastValue = thisValue;
-                        debFlag = true;
-                    }
-                    break;
-                case 4:  // ловим t2
-                    if ((!direction && thisValue > (startValue + B / 2.0f)) ||
-                        (direction && thisValue < (startValue + B / 2.0f))) {
-                        t2 = (millis() - startTime) / 1000.0f;
-                        state = 5;
-                        debFlag = true;
-                    }
-                    break;
-                case 5:  // ловим t3
-                    if ((!direction && thisValue > (startValue + B * 0.632f)) ||
-                        (direction && thisValue < (startValue + B * 0.632f))) {
-                        state = 6;
-                        debFlag = true;
-                        t3 = (millis() - startTime) / 1000.0f;
-                    }
-                    break;
-                case 6:  // считаем
-                    float Kc, Ki, Kd, tauI, tauD;
-                    float t1 = (t2 - 0.693f * t3) / 0.307f;
-                    float K = B / abs(end - start);
-                    float r = t1 / (t3 - t1);
-
-                    // PI рег
-                    Kc = (0.9 + r / 12.0) / (r * K);
-                    tauI = t1 * (30.0 + 3.0 * r) / (9.0 + 20.0 * r);
-                    Ki = Kc / tauI;
-                    PI_k[0] = Kc;
-                    PI_k[1] = Ki;
-
-                    // PID рег
-                    Kc = (1.33 + r / 4.0) / (r * K);
-                    tauI = t1 * (32.0 + 6.0 * r) / (13.0 + 8.0 * r);
-                    tauD = t1 * 4.0 / (11.0 + 2.0 * r);
-                    Ki = Kc / tauI;
-                    Kd = Kc * tauD;
-                    PID_k[0] = Kc;
-                    PID_k[1] = Ki;
-                    PID_k[2] = Kd;
-                    state = 7;  // конец
+                    lastValue = thisValue;
                     debFlag = true;
-                    break;
+                }
+                break;
+            case 3:		// ждём остывания именно до начальной стартовой стабильной точки (startValue)
+                if (abs(thisValue - startValue) < window) {
+                  startTime = millis(); // t0
+                  state = 4;
+                  output = (end);
+                }
+
+                lastValue = thisValue;
+                debFlag = true;
+
+                break;
+            case 4:		// ловим t2
+                if ( (!direction && thisValue >= (startValue + B / 2.0f)) ||
+                        (direction && thisValue <= (startValue + B / 2.0f)) ) {
+                    t2 = (millis() - startTime) / 1000.0f;
+                    state = 5;
+                    debFlag = true;
+                }
+                break;
+            case 5:		// ловим t3
+                if ( (!direction && thisValue >= (startValue + B * 0.632f)) ||
+                        (direction && thisValue <= (startValue + B * 0.632f)) ) {
+                    state = 6;
+                    debFlag = true;
+                    t3 = (millis() - startTime) / 1000.0f;
+                }
+                break;
+            case 6:		// считаем
+                float Kc, Ki, Kd, tauI, tauD;
+                float t1 = (t2 - 0.693f * t3) / 0.307f;
+
+                float tau = t3 - t1;
+                float tauDEL = t1 - startTime/*(t0)*/ / 1000.0f;
+
+                float K = B / abs(end - start);
+                float r = tauDEL / tau;
+
+                // PI рег
+                Kc = (1 / (r * K)) * (0.9 + r / 12.0);
+                tauI = tauDEL * ((30.0 + 3.0 * r) / (9.0 + 20.0 * r));
+                Ki = Kc / tauI;
+                PI_k[0] = Kc;
+                PI_k[1] = Ki;
+
+                // PID рег
+                Kc = (1 / (r * K)) * (1.33 + r / 4.0);
+                tauI = tauDEL * ((32.0 + 6.0 * r) / (13.0 + 8.0 * r));
+                tauD = tauDEL * (4.0 / (11.0 + 2.0 * r));
+                Ki = Kc / tauI;
+                Kd = Kc * tauD;
+                PID_k[0] = Kc;
+                PID_k[1] = Ki;
+                PID_k[2] = Kd;
+                state = 7;		// конец
+                debFlag = true;
+
+                break;
             }
         }
     }
 
-    float getPI_p() { return PI_k[0]; }
-    float getPI_i() { return PI_k[1]; }
-    float getPID_p() { return PID_k[0]; }
-    float getPID_i() { return PID_k[1]; }
-    float getPID_d() { return PID_k[2]; }
+    float getPI_p() {return PI_k[0];}
+    float getPI_i() {return PI_k[1];}
+    float getPID_p() {return PID_k[0];}
+    float getPID_i() {return PID_k[1];}
+    float getPID_d() {return PID_k[2];}
 
     int getOutput() {
         return output;
@@ -183,45 +188,25 @@ class PIDtuner2 {
         if (debFlag) {
             debFlag = false;
             switch (state) {
-                case 1:
-                    port->print("stabilize down: ");
-                    port->println(thisValue);
-                    break;
-                case 2:
-                    port->print("stabilize up: ");
-                    port->println(thisValue);
-                    break;
-                case 3:
-                    port->print("stabilize down: ");
-                    port->println(thisValue);
-                    break;
-                case 4:
-                    port->println("got t2");
-                    break;
-                case 5:
-                    port->println("got t3");
-                    break;
-                case 6:
-                    port->println("compute");
-                    break;
-                case 7:
-                    port->print("result: ");
-                    port->print("PI p: ");
-                    port->print(PI_k[0]);
-                    port->print('\t');
-                    port->print("PI i: ");
-                    port->print(PI_k[1]);
-                    port->print('\t');
-                    port->print("PID p: ");
-                    port->print(PID_k[0]);
-                    port->print('\t');
-                    port->print("PID i: ");
-                    port->print(PID_k[1]);
-                    port->print('\t');
-                    port->print("PID d: ");
-                    port->print(PID_k[2]);
-                    port->println();
-                    break;
+            case 1: port->print("stabilize down: "); port->println(thisValue);
+                break;
+            case 2: port->print("stabilize up: "); port->println(thisValue);
+                break;
+            case 3: port->print("stabilize down: "); port->println(thisValue);
+                break;
+            case 4: port->println("got t2");
+                break;
+            case 5: port->println("got t3");
+                break;
+            case 6: port->println("compute");
+                break;
+            case 7: port->print("result: ");
+                port->print("PI p: "); port->print(PI_k[0]); port->print('\t');
+                port->print("PI i: "); port->print(PI_k[1]); port->print('\t');
+                port->print("PID p: "); port->print(PID_k[0]); port->print('\t');
+                port->print("PID i: "); port->print(PID_k[1]); port->print('\t');
+                port->print("PID d: "); port->print(PID_k[2]); port->println();
+                break;
             }
         }
     }
@@ -232,10 +217,11 @@ class PIDtuner2 {
         }
     }
 
-   private:
+private:
     bool debFlag, direction;
     byte state = 0;
-    int start, end, wait, period, output;
+    int start, end, output;
+    unsigned long wait, period;
     float window;
     uint32_t startTime, tmr, debTmr;
     float thisValue, lastValue = 0.0;
