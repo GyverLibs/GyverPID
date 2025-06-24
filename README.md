@@ -6,6 +6,9 @@
 
 [![Foo](https://img.shields.io/badge/ПОДПИСАТЬСЯ-НА%20ОБНОВЛЕНИЯ-brightgreen.svg?style=social&logo=telegram&color=blue)](https://t.me/GyverLibs)
 
+|⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️<br><br>**У меня появилась новая библиотека [uPID](https://github.com/GyverLibs/uPID), она легче, быстрее и имеет больше настроек и модификаций алгоритма!**<br><br>⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️|
+| --- |
+
 # GyverPID
 GyverPID - библиотека PID регулятора для Arduino
 - Время одного расчёта около 70 мкс
